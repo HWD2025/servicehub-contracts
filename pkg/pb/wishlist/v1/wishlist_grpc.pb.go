@@ -20,6 +20,7 @@ type WishlistServiceClient interface {
 	GetWishlist(ctx context.Context, in *GetWishlistRequest, opts ...grpc.CallOption) (*GetWishlistResponse, error)
 	AddItem(ctx context.Context, in *AddItemRequest, opts ...grpc.CallOption) (*AddItemResponse, error)
 	RemoveItem(ctx context.Context, in *RemoveItemRequest, opts ...grpc.CallOption) (*RemoveItemResponse, error)
+	InWishlist(ctx context.Context, in *InWishlistRequest, opts ...grpc.CallOption) (*InWishlistResponse, error)
 }
 
 type wishlistServiceClient struct {
@@ -57,6 +58,15 @@ func (c *wishlistServiceClient) RemoveItem(ctx context.Context, in *RemoveItemRe
 	return out, nil
 }
 
+func (c *wishlistServiceClient) InWishlist(ctx context.Context, in *InWishlistRequest, opts ...grpc.CallOption) (*InWishlistResponse, error) {
+	out := new(InWishlistResponse)
+	err := c.cc.Invoke(ctx, "/wishlist.v1.WishlistService/InWishlist", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WishlistServiceServer is the server API for WishlistService service.
 // All implementations must embed UnimplementedWishlistServiceServer
 // for forward compatibility
@@ -64,6 +74,7 @@ type WishlistServiceServer interface {
 	GetWishlist(context.Context, *GetWishlistRequest) (*GetWishlistResponse, error)
 	AddItem(context.Context, *AddItemRequest) (*AddItemResponse, error)
 	RemoveItem(context.Context, *RemoveItemRequest) (*RemoveItemResponse, error)
+	InWishlist(context.Context, *InWishlistRequest) (*InWishlistResponse, error)
 	mustEmbedUnimplementedWishlistServiceServer()
 }
 
@@ -79,6 +90,9 @@ func (UnimplementedWishlistServiceServer) AddItem(context.Context, *AddItemReque
 }
 func (UnimplementedWishlistServiceServer) RemoveItem(context.Context, *RemoveItemRequest) (*RemoveItemResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveItem not implemented")
+}
+func (UnimplementedWishlistServiceServer) InWishlist(context.Context, *InWishlistRequest) (*InWishlistResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InWishlist not implemented")
 }
 func (UnimplementedWishlistServiceServer) mustEmbedUnimplementedWishlistServiceServer() {}
 
@@ -147,6 +161,24 @@ func _WishlistService_RemoveItem_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WishlistService_InWishlist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InWishlistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WishlistServiceServer).InWishlist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/wishlist.v1.WishlistService/InWishlist",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WishlistServiceServer).InWishlist(ctx, req.(*InWishlistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _WishlistService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "wishlist.v1.WishlistService",
 	HandlerType: (*WishlistServiceServer)(nil),
@@ -162,6 +194,10 @@ var _WishlistService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveItem",
 			Handler:    _WishlistService_RemoveItem_Handler,
+		},
+		{
+			MethodName: "InWishlist",
+			Handler:    _WishlistService_InWishlist_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
