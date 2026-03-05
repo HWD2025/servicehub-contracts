@@ -1,4 +1,4 @@
-.PHONY: proto install
+.PHONY: proto install push
 
 .DEFAULT_GOAL := proto
 
@@ -17,6 +17,10 @@ install:
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	@go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
 	@go install github.com/envoyproxy/protoc-gen-validate@latest
+
+push:
+	@eval "$(ssh-agent -s)"
+	@ssh-add servicehub_contracts_sshkey
 
 proto:
 	@mkdir -p $(PROTO_OUT)
