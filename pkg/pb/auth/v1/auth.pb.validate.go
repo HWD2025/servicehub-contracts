@@ -71,7 +71,7 @@ func (m *RegisterRequest) validate(all bool) error {
 	if !_RegisterRequest_Username_Pattern.MatchString(m.GetUsername()) {
 		err := RegisterRequestValidationError{
 			field:  "Username",
-			reason: "value does not match regex pattern \"^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$\"",
+			reason: "value does not match regex pattern \"^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$\"",
 		}
 		if !all {
 			return err
@@ -252,7 +252,7 @@ var _ interface {
 	ErrorName() string
 } = RegisterRequestValidationError{}
 
-var _RegisterRequest_Username_Pattern = regexp.MustCompile("^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$")
+var _RegisterRequest_Username_Pattern = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
 
 var _RegisterRequest_Password_Pattern = regexp.MustCompile("^[a-zA-Z0-9!@#$%^&*()\\-_=+\\[\\]{};:'\",.<>?\\\\|`~]{8,}$")
 
@@ -427,7 +427,7 @@ func (m *LoginRequest) validate(all bool) error {
 	if !_LoginRequest_Username_Pattern.MatchString(m.GetUsername()) {
 		err := LoginRequestValidationError{
 			field:  "Username",
-			reason: "value does not match regex pattern \"^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$\"",
+			reason: "value does not match regex pattern \"^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$\"",
 		}
 		if !all {
 			return err
@@ -534,7 +534,7 @@ var _ interface {
 	ErrorName() string
 } = LoginRequestValidationError{}
 
-var _LoginRequest_Username_Pattern = regexp.MustCompile("^[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*$")
+var _LoginRequest_Username_Pattern = regexp.MustCompile("^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$")
 
 var _LoginRequest_Password_Pattern = regexp.MustCompile("^[a-zA-Z0-9!@#$%^&*()\\-_=+\\[\\]{};:'\",.<>?\\\\|`~]{8,}$")
 
