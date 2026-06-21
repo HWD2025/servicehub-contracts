@@ -1,66 +1,72 @@
 #!/bin/bash
-set -o pipefail
+# Backup: discipline_committee_linux, hospitalhandover, plan_production
+# Pushes to git@github.com:HWD2025/servicehub-contracts.git
+# Sends ntfy.sh push notifications on every run - success or failure.
 
-DATE=$(date +%Y-%m-%d_%H-%M)
 REPO="/opt/backup-repo"
 DB_DIR="$REPO/databases"
 LOG="$REPO/logs/backup.log"
-LOCKFILE="/tmp/backup.lock"
-MYSQL_DEFAULTS_FILE="/root/.backup_my.cnf"   # see note below — move creds here, chmod 600
+LOCKFILE="/tmp/servicehub-backup.lock"
+MYSQL_CNF="/root/.backup_my.cnf"
+NTFY_TOPIC="deder-eapts-backup-7f3k9q"
+ALERT_PREFIX="[SERVICEHUB-17]"
+DATE=$(date +%Y-%m-%d_%H-%M)
+HAD_FAILURE=0
 
-# Prevent overlapping runs (e.g. if a previous run is hung on git push)
+send_alert() {
+    curl -s -m 10 -d "$ALERT_PREFIX $1" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1
+}
+
+# ---- Prevent overlapping runs ----
 exec 200>"$LOCKFILE"
-if ! flock -n 200; then
-    echo "$(date): Previous backup still running — skipping this run." >> "$LOG"
+flock -n 200 || {
+    echo "$(date '+%Y-%m-%d %H:%M:%S')  Previous run still in progress - skipping this run." >> "$LOG"
     exit 1
-fi
+}
 
-{
-echo "=== Backup started: $DATE ==="
+echo "=== Backup started: $DATE ===" >> "$LOG"
 
+# ---- Backup all 3 databases ----
 for DB in discipline_committee_linux hospitalhandover plan_production; do
     FILE="$DB_DIR/${DB}_${DATE}.sql.gz"
-    ERRFILE="$REPO/logs/${DB}_${DATE}.err"
-
-    mysqldump --defaults-extra-file="$MYSQL_DEFAULTS_FILE" "$DB" 2> "$ERRFILE" | gzip > "$FILE"
-    DUMP_STATUS=${PIPESTATUS[0]}
-    GZIP_STATUS=${PIPESTATUS[1]}
-
-    if [ "$DUMP_STATUS" -eq 0 ] && [ "$GZIP_STATUS" -eq 0 ]; then
-        echo "✓ $DB backed up successfully"
-        rm -f "$ERRFILE"
+    mysqldump --defaults-extra-file="$MYSQL_CNF" "$DB" | gzip > "$FILE"
+    STATUS=("${PIPESTATUS[@]}")   # [0]=mysqldump exit code, [1]=gzip exit code
+    if [ "${STATUS[0]}" -eq 0 ] && [ -s "$FILE" ]; then
+        echo "✓ $DB backed up successfully" >> "$LOG"
     else
-        echo "✗ $DB FAILED (mysqldump exit=$DUMP_STATUS, gzip exit=$GZIP_STATUS) — see $(basename "$ERRFILE")"
-        rm -f "$FILE"   # don't leave a broken/empty dump sitting in the repo
+        echo "✗ $DB FAILED (mysqldump exit ${STATUS[0]})" >> "$LOG"
+        rm -f "$FILE"
+        HAD_FAILURE=1
+        send_alert "FAILED: $DB dump failed on $DATE"
     fi
 done
 
-# Delete local backups older than 30 days
+# ---- Delete local backups older than 30 days ----
 find "$DB_DIR" -name "*.sql.gz" -mtime +30 -delete
-echo "Old backups cleaned"
+echo "Old backups cleaned" >> "$LOG"
 
-# Commit and push to GitHub
-cd "$REPO" || { echo "✗ Could not cd into $REPO"; exit 1; }
+# ---- Commit and push to GitHub ----
+cd "$REPO" || exit 1
+export GIT_TERMINAL_PROMPT=0
 git add -A
-
-if git diff --cached --quiet; then
-    echo "Nothing new to commit"
-else
-    if git commit -m "Automated backup: $DATE"; then
-        # GIT_TERMINAL_PROMPT=0 makes push FAIL FAST instead of hanging
-        # forever waiting for credentials that will never arrive on cron
-        if GIT_TERMINAL_PROMPT=0 git push origin main; then
-            echo "✓ Pushed to GitHub successfully"
-        else
-            echo "✗ GitHub push FAILED (auth/network issue — check credential helper / token expiry)"
+if ! git diff --cached --quiet; then
+    git commit -m "Automated backup: $DATE" >> "$LOG" 2>&1
+    git push origin main >> "$LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        echo "✓ Pushed to GitHub successfully" >> "$LOG"
+        if [ "$HAD_FAILURE" -eq 0 ]; then
+            send_alert "OK: all 3 databases backed up and pushed successfully on $DATE"
         fi
     else
-        echo "✗ git commit FAILED"
+        echo "✗ GitHub push FAILED" >> "$LOG"
+        send_alert "FAILED: GitHub push failed on $DATE - dumps exist locally but not pushed"
+    fi
+else
+    echo "Nothing new to commit" >> "$LOG"
+    if [ "$HAD_FAILURE" -eq 0 ]; then
+        send_alert "OK: backup ran, no changes to push (dumps unchanged) on $DATE"
     fi
 fi
 
-echo "=== Backup completed: $(date +%Y-%m-%d_%H-%M) ==="
-echo ""
-} >> "$LOG" 2>&1
-
-flock -u 200
+echo "=== Backup completed: $(date +%Y-%m-%d_%H-%M) ===" >> "$LOG"
+echo "" >> "$LOG"
