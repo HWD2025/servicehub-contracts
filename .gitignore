@@ -1,3 +1,4 @@
 servicehub_contracts_sshkey
 servicehub_contracts_sshkey.pub
 .idea
+logs/*.log
