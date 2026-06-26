@@ -14,7 +14,7 @@ DATE=$(date +%Y-%m-%d_%H-%M)
 HAD_FAILURE=0
 
 send_alert() {
-    curl -sS -m 10 -d "$ALERT_PREFIX $1" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1
+    curl -sS -m 20 -d "$ALERT_PREFIX $1" "https://ntfy.sh/$NTFY_TOPIC" >> "$LOG" 2>&1
 }
 
 # ---- Prevent overlapping runs ----
