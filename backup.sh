@@ -30,7 +30,7 @@ echo "=== Backup started: $DATE ===" >> "$LOG"
 for DB in discipline_committee_linux hospitalhandover plan_production; do
     FILE="$DB_DIR/${DB}_${DATE}.sql.gz"
     mysqldump --defaults-extra-file="$MYSQL_CNF" "$DB" | gzip > "$FILE"
-    STATUS=("${PIPESTATUS[@]}")   # [0]=mysqldump exit code, [1]=gzip exit code
+    STATUS=("${PIPESTATUS[@]}")
     if [ "${STATUS[0]}" -eq 0 ] && [ -s "$FILE" ]; then
         echo "✓ $DB backed up successfully" >> "$LOG"
     else
@@ -51,6 +51,7 @@ export GIT_TERMINAL_PROMPT=0
 git add -A
 if ! git diff --cached --quiet; then
     git commit -m "Automated backup: $DATE" >> "$LOG" 2>&1
+    git pull --no-rebase origin main >> "$LOG" 2>&1
     git push origin main >> "$LOG" 2>&1
     if [ $? -eq 0 ]; then
         echo "✓ Pushed to GitHub successfully" >> "$LOG"
